@@ -61,6 +61,7 @@ def test_home_carrega_agendamentos_salvos(monkeypatch, tmp_path):
     response = client.get("/")
 
     assert response.status_code == 200
+    assert b"/static/images/465265618_1118096523653749_7654686943570440081_n.jpg" in response.data
     assert b"Pedro" in response.data
     assert b"Portugu\xc3\xaas" in response.data
     assert b"15" in response.data
@@ -140,6 +141,7 @@ def test_login_falha_redireciona_para_login(monkeypatch, tmp_path):
     response = client.get("/login")
 
     assert response.status_code == 200
+    assert b"/static/images/465265618_1118096523653749_7654686943570440081_n.jpg" in response.data
     assert b"Login" in response.data
 
 

@@ -152,6 +152,7 @@ HTML_LOGIN = """
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f8fafc; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
         .box { background: white; padding: 30px; border-radius: 12px; width: min(420px, 90%); box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08); }
+        .logo { display: block; width: 140px; height: 140px; object-fit: contain; margin: 0 auto 16px; }
         h2 { margin-bottom: 20px; color: #0f172a; }
         form { display: flex; flex-direction: column; gap: 16px; }
         input { padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; }
@@ -163,6 +164,7 @@ HTML_LOGIN = """
 </head>
 <body>
     <div class="box">
+        <img class="logo" src="{{ url_for('static', filename='images/465265618_1118096523653749_7654686943570440081_n.jpg') }}" alt="Teoria dos Números">
         <h2>Login</h2>
         {% if error %}
             <div class="error">{{ error }}</div>
@@ -237,6 +239,8 @@ HTML_GESTAO = """
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8fafc; color: #0f172a; }
         nav { background: #1e293b; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
         nav h2 { font-size: 20px; }
+        nav .brand { display: flex; align-items: center; gap: 12px; }
+        nav .brand-logo { width: 58px; height: 58px; object-fit: contain; background: white; border-radius: 8px; }
         .nav-actions { display: flex; gap: 12px; align-items: center; }
         .btn { display: inline-block; border-radius: 20px; text-decoration: none; padding: 8px 16px; font-size: 13px; font-weight: 600; }
         .btn-primary { background: #2563eb; color: white; }
@@ -255,7 +259,10 @@ HTML_GESTAO = """
 </head>
 <body>
     <nav>
-        <h2>📐 Teoria dos Números</h2>
+        <div class="brand">
+            <img class="brand-logo" src="{{ url_for('static', filename='images/465265618_1118096523653749_7654686943570440081_n.jpg') }}" alt="Logótipo Teoria dos Números">
+            <h2>Teoria dos Números</h2>
+        </div>
         <div class="nav-actions">
             <a href="/" class="btn btn-primary">Voltar</a>
             <a href="/logout" class="btn btn-danger">Sair</a>
@@ -314,6 +321,8 @@ HTML_HOME = """
         /* Menu de Navegação Superior */
         nav { background-color: #1e293b; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         nav h2 { font-size: 20px; font-weight: 600; letter-spacing: 0.5px; }
+        nav .brand { display: flex; align-items: center; gap: 12px; }
+        nav .brand-logo { width: 58px; height: 58px; object-fit: contain; background: white; border-radius: 8px; }
         
         /* Botão interativo no canto superior direito */
         .btn-topo { background-color: #3b82f6; color: white; padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 500; text-decoration: none; transition: background-color 0.2s; display: inline-block; }
@@ -368,7 +377,10 @@ HTML_HOME = """
 
     <!-- Menu Superior -->
     <nav>
-        <h2>📐 Teoria dos Números</h2>
+        <div class="brand">
+            <img class="brand-logo" src="{{ url_for('static', filename='images/465265618_1118096523653749_7654686943570440081_n.jpg') }}" alt="Logótipo Teoria dos Números">
+            <h2>Teoria dos Números</h2>
+        </div>
         <div style="display: flex; gap: 12px; align-items: center;">
             <a href="#testes" class="btn-topo">Testes Registados</a>
             {% if session.get('role') == 'professor' %}
