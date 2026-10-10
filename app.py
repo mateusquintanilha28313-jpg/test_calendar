@@ -2,11 +2,19 @@ import csv
 import io
 import json
 import os
+from functools import wraps
 from pathlib import Path
 
-from flask import Flask, render_template_string, request, redirect, url_for, Response
+from flask import Flask, render_template_string, request, redirect, url_for, Response, session
+
+
+def get_users_file():
+    return Path(os.environ.get("USERS_FILE", str(Path(__file__).with_name("users.json"))))
 
 app = Flask(__name__)
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
+if not app.config["SECRET_KEY"]:
+    raise RuntimeError("SECRET_KEY environment variable must be set")
 
 
 def get_agendamentos_file():
@@ -40,7 +48,258 @@ def salvar_agendamentos(agendamentos):
 # Lista inicial carregada do arquivo de persistência
 agendamentos = carregar_agendamentos()
 
+
+def carregar_usuarios():
+    arquivo = get_users_file()
+    if not arquivo.exists():
+        return []
+
+    try:
+        with arquivo.open("r", encoding="utf-8") as f:
+            dados = json.load(f)
+            if isinstance(dados, list):
+                return dados
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        pass
+
+    return []
+
+
+def salvar_usuarios(usuarios):
+    arquivo = get_users_file()
+    arquivo.parent.mkdir(parents=True, exist_ok=True)
+    with arquivo.open("w", encoding="utf-8") as f:
+        json.dump(usuarios, f, ensure_ascii=False, indent=2)
+
+
+def get_default_user():
+    username = os.environ.get("APP_USERNAME")
+    password = os.environ.get("APP_PASSWORD")
+    if not username or not password:
+        return None
+
+    return {
+        "username": username,
+        "password": password,
+        "role": "professor",
+    }
+
+
+def autenticar_usuario(username, password):
+    username = (username or '').strip()
+    password = (password or '').strip()
+
+    for usuario in carregar_usuarios():
+        if usuario.get('username') == username and usuario.get('password') == password:
+            return True
+
+    default_user = get_default_user()
+    if default_user and username == default_user["username"] and password == default_user["password"]:
+        return True
+
+    return False
+
+
+def get_user_role(username):
+    username = (username or '').strip()
+    for usuario in carregar_usuarios():
+        if usuario.get('username') == username:
+            return (usuario.get('role') or 'aluno').lower()
+
+    default_user = get_default_user()
+    if default_user and username == default_user["username"]:
+        return default_user["role"]
+
+    return 'aluno'
+
+
+def e_dono_do_teste(item, username):
+    if item.get('usuario'):
+        return item.get('usuario') == username
+    if username == 'admin':
+        return True
+    return (item.get('nome') or '').lower() == username.lower()
+
+
+def login_required(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if not session.get("logged_in"):
+            return redirect(url_for("login_page"))
+        return view(*args, **kwargs)
+
+    return wrapped
+
+
+def professor_required(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if not session.get("logged_in"):
+            return redirect(url_for("login_page"))
+        if (session.get('role') or get_user_role(session.get('username'))) != 'professor':
+            return redirect(url_for('home'))
+        return view(*args, **kwargs)
+
+    return wrapped
+
+
+HTML_LOGIN = """
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>Login</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f8fafc; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+        .box { background: white; padding: 30px; border-radius: 12px; width: min(420px, 90%); box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08); }
+        h2 { margin-bottom: 20px; color: #0f172a; }
+        form { display: flex; flex-direction: column; gap: 16px; }
+        input { padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; }
+        button { background: #2563eb; color: white; border: none; border-radius: 8px; padding: 12px; font-weight: 600; cursor: pointer; }
+        .error { color: #b91c1c; margin-bottom: 10px; font-size: 14px; }
+        .link { margin-top: 12px; text-align: center; font-size: 14px; }
+        a { color: #2563eb; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h2>Login</h2>
+        {% if error %}
+            <div class="error">{{ error }}</div>
+        {% endif %}
+        <form method="POST" action="/login">
+            <input type="text" name="username" placeholder="Utilizador" required>
+            <input type="password" name="password" placeholder="Palavra-passe" required>
+            <button type="submit">Entrar</button>
+        </form>
+        <div class="link">
+            Ainda não tem conta? <a href="/logon">Crie uma</a>
+        </div>
+    </div>
+</body>
+</html>
+"""
+
+HTML_LOGON = """
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>Logon</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f8fafc; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+        .box { background: white; padding: 30px; border-radius: 12px; width: min(420px, 90%); box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08); }
+        h2 { margin-bottom: 20px; color: #0f172a; }
+        form { display: flex; flex-direction: column; gap: 16px; }
+        input { padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; }
+        button { background: #16a34a; color: white; border: none; border-radius: 8px; padding: 12px; font-weight: 600; cursor: pointer; }
+        .error { color: #b91c1c; margin-bottom: 10px; font-size: 14px; }
+        .success { color: #166534; margin-bottom: 10px; font-size: 14px; }
+        .link { margin-top: 12px; text-align: center; font-size: 14px; }
+        a { color: #2563eb; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h2>Criar conta</h2>
+        {% if error %}
+            <div class="error">{{ error }}</div>
+        {% endif %}
+        {% if success %}
+            <div class="success">{{ success }}</div>
+        {% endif %}
+        <form method="POST" action="/logon">
+            <input type="text" name="username" placeholder="Utilizador" required>
+            <input type="password" name="password" placeholder="Palavra-passe" required>
+            <select name="role" required>
+                <option value="aluno">Aluno</option>
+                <option value="professor" disabled>Professor (só por gestão interna)</option>
+            </select>
+            <button type="submit">Criar conta</button>
+        </form>
+        <div class="link">
+            Já tem conta? <a href="/login">Voltar ao login</a>
+        </div>
+    </div>
+</body>
+</html>
+"""
+
 # Template HTML atualizado (PT-PT)
+HTML_GESTAO = """
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestão de Utilizadores</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8fafc; color: #0f172a; }
+        nav { background: #1e293b; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
+        nav h2 { font-size: 20px; }
+        .nav-actions { display: flex; gap: 12px; align-items: center; }
+        .btn { display: inline-block; border-radius: 20px; text-decoration: none; padding: 8px 16px; font-size: 13px; font-weight: 600; }
+        .btn-primary { background: #2563eb; color: white; }
+        .btn-danger { background: #ef4444; color: white; }
+        .container { max-width: 900px; margin: 30px auto; padding: 0 20px; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06); padding: 24px; }
+        h3 { margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 12px 10px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+        th { background: #f8fafc; }
+        select, button { padding: 10px 12px; border-radius: 8px; border: 1px solid #cbd5e1; }
+        form { display: flex; align-items: center; gap: 12px; }
+        button { background: #16a34a; color: white; border: none; cursor: pointer; }
+        .msg { margin-bottom: 12px; color: #166534; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <nav>
+        <h2>📐 Teoria dos Números</h2>
+        <div class="nav-actions">
+            <a href="/" class="btn btn-primary">Voltar</a>
+            <a href="/logout" class="btn btn-danger">Sair</a>
+        </div>
+    </nav>
+    <div class="container">
+        <div class="card">
+            <h3>Gestao de Utilizadores</h3>
+            {% if message %}
+                <div class="msg">{{ message }}</div>
+            {% endif %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Utilizador</th>
+                        <th>Papel</th>
+                        <th>Alterar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.role }}</td>
+                        <td>
+                            <form method="POST" action="/gestao-utilizadores">
+                                <input type="hidden" name="username" value="{{ user.username }}">
+                                <select name="role">
+                                    <option value="aluno" {% if user.role == 'aluno' %}selected{% endif %}>Aluno</option>
+                                    <option value="professor" {% if user.role == 'professor' %}selected{% endif %}>Professor</option>
+                                </select>
+                                <button type="submit">Guardar</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
+"""
+
 HTML_HOME = """
 <!DOCTYPE html>
 <html lang="pt">
@@ -110,7 +369,13 @@ HTML_HOME = """
     <!-- Menu Superior -->
     <nav>
         <h2>📐 Teoria dos Números</h2>
-        <a href="#testes" class="btn-topo">Testes Registados</a>
+        <div style="display: flex; gap: 12px; align-items: center;">
+            <a href="#testes" class="btn-topo">Testes Registados</a>
+            {% if session.get('role') == 'professor' %}
+                <a href="/gestao-utilizadores" class="btn-topo" style="background-color: #10b981;">Gestão de Utilizadores</a>
+            {% endif %}
+            <a href="/logout" class="btn-topo" style="background-color: #ef4444;">Sair</a>
+        </div>
     </nav>
 
     <div class="container">
@@ -225,10 +490,80 @@ HTML_HOME = """
 </html>
 """
 
+@app.route('/logon', methods=['GET', 'POST'])
+def logon_page():
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '').strip()
+        role = (request.form.get('role', 'aluno') or 'aluno').strip().lower()
+
+        if not username or not password:
+            return render_template_string(HTML_LOGON, error='Preencha todos os campos.', success=None)
+
+        if role not in {'aluno', 'professor'}:
+            role = 'aluno'
+
+        if role == 'professor':
+            return render_template_string(
+                HTML_LOGON,
+                error='Apenas um professor pode criar outra conta de professor. Peça ao professor responsável.',
+                success=None,
+            )
+
+        usuarios = carregar_usuarios()
+        if any(u.get('username') == username for u in usuarios):
+            return render_template_string(HTML_LOGON, error='Este utilizador já existe.', success=None)
+
+        usuarios.append({"username": username, "password": password, "role": role})
+        salvar_usuarios(usuarios)
+        return render_template_string(HTML_LOGON, error=None, success='Conta criada com sucesso! Pode fazer login.')
+
+    if session.get('logged_in'):
+        return redirect(url_for('home'))
+
+    return render_template_string(HTML_LOGON, error=None, success=None)
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login_page():
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '').strip()
+
+        if autenticar_usuario(username, password):
+            session['logged_in'] = True
+            session['username'] = username
+            session['role'] = get_user_role(username)
+            return redirect(url_for('home'))
+
+        return render_template_string(HTML_LOGIN, error='Credenciais inválidas.')
+
+    if session.get('logged_in'):
+        return redirect(url_for('home'))
+
+    return render_template_string(HTML_LOGIN, error=None)
+
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login_page'))
+
+
 @app.route('/')
+@login_required
 def home():
     filtro_aluno = (request.args.get('aluno') or '').strip()
-    agendamentos_atuais = carregar_agendamentos()
+    username = session.get('username')
+    role = session.get('role') or get_user_role(username)
+
+    if role == 'professor':
+        agendamentos_atuais = carregar_agendamentos()
+    else:
+        agendamentos_atuais = [
+            a for a in carregar_agendamentos()
+            if e_dono_do_teste(a, username)
+        ]
 
     if filtro_aluno:
         agendamentos_atuais = [
@@ -238,7 +573,35 @@ def home():
 
     return render_template_string(HTML_HOME, agendamentos=agendamentos_atuais, filtro_aluno=filtro_aluno)
 
+
+@app.route('/gestao-utilizadores', methods=['GET', 'POST'])
+@login_required
+@professor_required
+def gestao_utilizadores():
+    message = None
+    if request.method == 'POST':
+        username = (request.form.get('username') or '').strip()
+        role = (request.form.get('role') or 'aluno').strip().lower()
+        if username and role in {'aluno', 'professor'}:
+            usuarios = carregar_usuarios()
+            for usuario in usuarios:
+                if usuario.get('username') == username:
+                    usuario['role'] = role
+                    break
+            salvar_usuarios(usuarios)
+            message = f'Utilizador {username} atualizado para {role}.'
+
+    usuarios = []
+    for usuario in carregar_usuarios():
+        usuarios.append({
+            'username': usuario.get('username', ''),
+            'role': (usuario.get('role') or 'aluno').lower(),
+        })
+    return render_template_string(HTML_GESTAO, users=usuarios, message=message)
+
+
 @app.route('/agendar', methods=['POST'])
+@login_required
 def agendar():
     nome = request.form.get('nome')
     ano = request.form.get('ano')
@@ -254,6 +617,7 @@ def agendar():
             'disciplina': disciplina,
             'data': data,
             'nota': nota,
+            'usuario': session.get('username'),
         })
         salvar_agendamentos(agendamentos_atuais)
 
@@ -261,6 +625,7 @@ def agendar():
 
 
 @app.route('/atualizar-nota', methods=['POST'])
+@login_required
 def atualizar_nota():
     indice = request.form.get('indice', '').strip()
     nota = request.form.get('nota', '').strip()
@@ -273,19 +638,31 @@ def atualizar_nota():
     agendamentos_atuais = carregar_agendamentos()
 
     if 0 <= indice_int < len(agendamentos_atuais):
-        agendamentos_atuais[indice_int]['nota'] = nota
-        salvar_agendamentos(agendamentos_atuais)
+        item = agendamentos_atuais[indice_int]
+        role = session.get('role') or get_user_role(session.get('username'))
+        if role == 'professor' or item.get('usuario') == session.get('username') or e_dono_do_teste(item, session.get('username')):
+            item['nota'] = nota
+            salvar_agendamentos(agendamentos_atuais)
 
     return redirect(url_for('home'))
 
 
 @app.route('/exportar-historico')
+@login_required
 def exportar_historico():
     aluno = (request.args.get('aluno') or '').strip()
-    historico = [
-        a for a in carregar_agendamentos()
-        if aluno.lower() in (a.get('nome') or '').lower()
-    ]
+    username = session.get('username')
+    role = session.get('role') or get_user_role(username)
+    historico = []
+
+    for a in carregar_agendamentos():
+        if role == 'professor':
+            permitido = True
+        else:
+            permitido = e_dono_do_teste(a, username)
+
+        if permitido and (not aluno or aluno.lower() in (a.get('nome') or '').lower()):
+            historico.append(a)
 
     output = io.StringIO()
     writer = csv.writer(output)
@@ -306,4 +683,4 @@ def exportar_historico():
     return response
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', debug=False)
