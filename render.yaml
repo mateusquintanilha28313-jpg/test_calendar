@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: agendamentos
+    name: teoriadosnumeros
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt
