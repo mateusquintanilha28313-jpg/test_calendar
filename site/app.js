@@ -195,19 +195,39 @@ loginForm.addEventListener("submit", async (event) => {
   if (error) showNotice(error.message, true);
 });
 
+function updateSignupType() {
+  const isProfessor = new FormData(signupForm).get("account_type") === "professor";
+  const codeInput = document.querySelector("#signup-teacher-code");
+  document.querySelector("#teacher-code-field").hidden = !isProfessor;
+  codeInput.required = isProfessor;
+  if (!isProfessor) codeInput.value = "";
+  document.querySelector("#signup-submit").textContent = isProfessor ? "Criar conta de professor" : "Criar conta de aluno";
+}
+
+signupForm.addEventListener("change", (event) => {
+  if (event.target.name === "account_type") updateSignupType();
+});
+
 signupForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!supabase) return;
   const form = new FormData(signupForm);
+  const isProfessor = form.get("account_type") === "professor";
+  const metadata = { username: String(form.get("username")).trim(), account_type: isProfessor ? "professor" : "aluno" };
+  if (isProfessor) metadata.teacher_code = String(form.get("teacher_code")).trim();
   const { data, error } = await supabase.auth.signUp({
     email: form.get("email"),
     password: form.get("password"),
-    options: { data: { username: String(form.get("username")).trim() } }
+    options: { data: metadata }
   });
-  if (error) return showNotice(error.message, true);
+  if (error) {
+    const invalidCode = isProfessor && /database error saving new user|invalid_teacher_code/i.test(error.message);
+    return showNotice(invalidCode ? "Código de professor inválido." : error.message, true);
+  }
   if (!data.session) {
     setAuthMode("login");
     signupForm.reset();
+    updateSignupType();
     showNotice("Conta criada. Confirme o email antes de iniciar sessão.");
   }
 });

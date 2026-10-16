@@ -32,18 +32,48 @@ as $$
   );
 $$;
 
+create schema if not exists private;
+revoke all on schema private from public, anon, authenticated;
+
+create table if not exists private.teacher_signup_code (
+  id boolean primary key default true check (id),
+  code text not null check (char_length(code) >= 6),
+  updated_at timestamptz not null default now()
+);
+
+revoke all on private.teacher_signup_code from public, anon, authenticated;
+
 create or replace function public.create_profile_for_new_user()
 returns trigger
 language plpgsql
 security definer
 set search_path = ''
 as $$
+declare
+  requested_role text := coalesce(new.raw_user_meta_data ->> 'account_type', 'aluno');
+  provided_code text := nullif(trim(new.raw_user_meta_data ->> 'teacher_code'), '');
+  new_role text := 'aluno';
 begin
-  insert into public.profiles (id, username)
+  if requested_role = 'professor' then
+    if provided_code is null or not exists (
+      select 1 from private.teacher_signup_code where code = provided_code
+    ) then
+      raise exception 'invalid_teacher_code' using errcode = 'P0001';
+    end if;
+    new_role := 'professor';
+  end if;
+
+  insert into public.profiles (id, username, role)
   values (
     new.id,
-    coalesce(nullif(trim(new.raw_user_meta_data ->> 'username'), ''), split_part(new.email, '@', 1))
+    coalesce(nullif(trim(new.raw_user_meta_data ->> 'username'), ''), split_part(new.email, '@', 1)),
+    new_role
   );
+
+  update auth.users
+  set raw_user_meta_data = raw_user_meta_data - 'teacher_code'
+  where id = new.id;
+
   return new;
 end;
 $$;

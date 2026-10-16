@@ -37,8 +37,17 @@
         <input id="signup-email" name="email" type="email" autocomplete="email" required>
         <label for="signup-password">Palavra-passe</label>
         <input id="signup-password" name="password" type="password" minlength="8" autocomplete="new-password" required>
-        <button class="button button-primary" type="submit">Criar conta de aluno</button>
-        <p class="form-note">As novas contas começam com o perfil de aluno.</p>
+        <fieldset class="account-type">
+          <legend>Tipo de conta</legend>
+          <label><input type="radio" name="account_type" value="aluno" checked> Aluno</label>
+          <label><input type="radio" name="account_type" value="professor"> Professor</label>
+        </fieldset>
+        <div id="teacher-code-field" hidden>
+          <label for="signup-teacher-code">Código de professor</label>
+          <input id="signup-teacher-code" name="teacher_code" type="password" autocomplete="off">
+        </div>
+        <button id="signup-submit" class="button button-primary" type="submit">Criar conta de aluno</button>
+        <p id="signup-note" class="form-note">As contas de professor precisam do código fornecido pela escola.</p>
       </form>
       <p id="config-help" class="config-help" hidden>Configure o URL e a chave pública do Supabase em <code>site/supabase-config.js</code>.</p>
     </section>
