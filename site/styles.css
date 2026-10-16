@@ -91,6 +91,8 @@ input:focus, select:focus { outline: 2px solid rgb(23 108 99 / 24%); border-colo
 .student-meta, .test-date { color: var(--muted); font-size: 11px; line-height: 1.5; }
 .grade-area { display: flex; justify-content: flex-end; align-items: center; gap: 7px; }
 .grade-input { width: 82px; min-height: 36px; padding: 7px 8px; font-size: 12px; }
+.button-danger { color: white; background: var(--coral); }
+.button-danger:hover { background: #a94e38; }
 .grade-button { min-height: 36px; padding: 7px 9px; color: white; background: var(--teal); font-size: 11px; }
 .empty-state { padding: 28px 14px; color: var(--muted); background: #eeefe9; text-align: center; font-size: 13px; }
 .users-panel { padding: 0 22px; }

@@ -89,6 +89,7 @@ function renderTests() {
     return;
   }
 
+  const isProfessor = currentProfile?.role === "professor";
   testList.innerHTML = visibleTests.map((item) => {
     const formattedDate = new Date(`${item.test_date}T00:00:00`).toLocaleDateString("pt-PT");
     const gradeValue = item.grade === null ? "" : String(item.grade);
@@ -99,6 +100,7 @@ function renderTests() {
         <label class="visually-hidden" for="grade-${escapeHtml(item.id)}">Nota de ${escapeHtml(item.name)}</label>
         <input class="grade-input" id="grade-${escapeHtml(item.id)}" name="grade" type="number" min="0" max="20" step="0.1" value="${escapeHtml(gradeValue)}" placeholder="Nota">
         <button class="button grade-button" type="submit">Guardar nota</button>
+        ${isProfessor ? `<button class="button grade-button button-danger" type="button" data-delete-test="${escapeHtml(item.id)}">Apagar</button>` : ""}
       </form>
     </article>`;
   }).join("");
@@ -263,6 +265,31 @@ testList.addEventListener("submit", async (event) => {
   if (error) return showNotice(error.message, true);
   showNotice("Nota atualizada.");
   await loadTests();
+});
+
+testList.addEventListener("click", async (event) => {
+  const button = event.target.closest("[data-delete-test]");
+  if (!button) return;
+  const item = tests.find((test) => test.id === button.dataset.deleteTest);
+  if (!item || !window.confirm(`Apagar o teste de ${item.name} (${item.subject})?`)) return;
+  const { data, error } = await supabase.from("tests").delete().eq("id", item.id).select("id");
+  if (error) return showNotice(error.message, true);
+  if (!data.length) return showNotice("Não tem permissão para apagar este teste.", true);
+  showNotice("Teste apagado.");
+  await loadTests();
+});
+
+document.querySelector("#refresh-button").addEventListener("click", async (event) => {
+  const button = event.currentTarget;
+  button.disabled = true;
+  try {
+    await loadTests();
+    showNotice("Testes atualizados.");
+  } catch (error) {
+    showNotice(error.message, true);
+  } finally {
+    button.disabled = false;
+  }
 });
 
 document.querySelector("#filter-form").addEventListener("submit", (event) => {

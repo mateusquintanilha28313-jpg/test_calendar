@@ -113,12 +113,17 @@ create policy "Users and professors update permitted tests"
   using (user_id = (select auth.uid()) or (select public.current_user_is_professor()))
   with check (user_id = (select auth.uid()) or (select public.current_user_is_professor()));
 
+drop policy if exists "Professors delete tests" on public.tests;
+create policy "Professors delete tests"
+  on public.tests for delete to authenticated
+  using ((select public.current_user_is_professor()));
+
 revoke all on public.profiles from anon, authenticated;
 grant select on public.profiles to authenticated;
 grant update (role) on public.profiles to authenticated;
 
 revoke all on public.tests from anon, authenticated;
-grant select, insert on public.tests to authenticated;
+grant select, insert, delete on public.tests to authenticated;
 grant update (grade) on public.tests to authenticated;
 
 revoke all on function public.current_user_is_professor() from public;
