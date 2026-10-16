@@ -236,7 +236,8 @@ signupForm.addEventListener("submit", async (event) => {
 
 document.querySelector("#test-form").addEventListener("submit", async (event) => {
   event.preventDefault();
-  const form = new FormData(event.currentTarget);
+  const formElement = event.currentTarget;
+  const form = new FormData(formElement);
   const rawGrade = String(form.get("grade")).trim().replace(",", ".");
   const grade = rawGrade ? Number(rawGrade) : null;
   if (grade !== null && (!Number.isFinite(grade) || grade < 0 || grade > 20)) return showNotice("A nota deve estar entre 0 e 20.", true);
@@ -249,7 +250,7 @@ document.querySelector("#test-form").addEventListener("submit", async (event) =>
     grade
   });
   if (error) return showNotice(error.message, true);
-  event.currentTarget.reset();
+  formElement.reset();
   showNotice("Teste guardado.");
   await loadTests();
 });
