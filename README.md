@@ -30,8 +30,4 @@ python3 -m http.server 8000 --directory site
 
 Abra `http://localhost:8000`. O site local usa o mesmo projeto Supabase do site publicado.
 
-## Importar agendamentos atuais
-
-Inicie sessão como professor, escolha **Importar JSON** e selecione o ficheiro legado `agendamentos.json`. A importação aceita os campos (`nome`, `ano`, `disciplina`, `data`, `nota`) e transfere-os para as tabelas partilhadas do Supabase. Se o campo `usuario` ou o nome do aluno corresponder a uma conta, o teste será associado a essa conta; caso contrário, fica associado ao professor que o importar. As palavras-passe antigas não são importadas; cada pessoa terá de criar uma conta.
-
-A versão JavaScript mantém criação de conta e início de sessão, perfis de aluno/professor, gestão de utilizadores, registo e filtro de testes, atualização de notas e exportação CSV filtrada. A autenticação usa email e palavra-passe. O acesso à base de dados é limitado por conta e perfil com Row Level Security.
+A versão JavaScript mantém criação de conta e início de sessão, perfis de aluno/professor, gestão de utilizadores, registo e filtro de testes, atualização de notas e exportação CSV filtrada. Os professores também podem filtrar os testes por dia. Testes de dias anteriores ficam ocultos por defeito e podem ser consultados com **Mostrar antigos**. A autenticação usa email e palavra-passe. O acesso à base de dados é limitado por conta e perfil com Row Level Security.

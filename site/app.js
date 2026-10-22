@@ -12,6 +12,8 @@ const testList = document.querySelector("#test-list");
 let currentUser = null;
 let currentProfile = null;
 let tests = [];
+let activeTestDate = "";
+let showPastTests = false;
 let noticeTimeout;
 
 function showNotice(message, isError = false) {
@@ -48,12 +50,18 @@ function showSignedOut() {
 }
 
 function showSignedIn() {
+  const isProfessor = currentProfile.role === "professor";
   authScreen.hidden = true;
   appScreen.hidden = false;
   document.querySelector("#account-label").textContent = currentProfile.username;
-  document.querySelector("#role-label").textContent = currentProfile.role === "professor" ? "Perfil de professor" : "Perfil de aluno";
-  document.querySelector("#manage-link").hidden = currentProfile.role !== "professor";
-  document.querySelector("#import-button").hidden = currentProfile.role !== "professor";
+  document.querySelector("#role-label").textContent = isProfessor ? "Perfil de professor" : "Perfil de aluno";
+  document.querySelector("#manage-link").hidden = !isProfessor;
+  document.querySelector("#import-button").hidden = true;
+  document.querySelector("#day-filter-controls").hidden = !isProfessor;
+  if (!isProfessor) {
+    activeTestDate = "";
+    document.querySelector("#test-day-filter").value = "";
+  }
   document.querySelector("#home-view").hidden = false;
   document.querySelector("#users-view").hidden = true;
 }
@@ -73,19 +81,40 @@ async function loadTests() {
   renderTests();
 }
 
+function localDateString(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function filteredTests() {
   const filter = document.querySelector("#student-filter").value.trim().toLocaleLowerCase("pt-PT");
-  return tests.filter((item) => !filter || item.name.toLocaleLowerCase("pt-PT").includes(filter));
+  const today = localDateString();
+  return tests.filter((item) =>
+    (!filter || item.name.toLocaleLowerCase("pt-PT").includes(filter)) &&
+    (!activeTestDate || item.test_date === activeTestDate) &&
+    (showPastTests || item.test_date >= today || item.test_date === activeTestDate)
+  );
 }
 
 function renderTests() {
   const visibleTests = filteredTests();
+  const hasPastTests = tests.some((item) => item.test_date < localDateString());
   document.querySelector("#record-count").textContent = String(visibleTests.length);
-  const hasFilter = document.querySelector("#student-filter").value.trim().length > 0;
+  const togglePastTests = document.querySelector("#toggle-past-tests");
+  togglePastTests.hidden = !hasPastTests;
+  togglePastTests.textContent = showPastTests ? "Ocultar antigos" : "Mostrar antigos";
+  togglePastTests.setAttribute("aria-pressed", String(showPastTests));
+  const hasFilter = document.querySelector("#student-filter").value.trim().length > 0 || Boolean(activeTestDate) || showPastTests;
   document.querySelector("#clear-filter").hidden = !hasFilter;
   document.querySelector("#export-button").hidden = !hasFilter;
   if (!visibleTests.length) {
-    testList.innerHTML = '<p class="empty-state">Ainda não existem testes registados.</p>';
+    testList.innerHTML = tests.length
+      ? `<p class="empty-state">${hasPastTests && !showPastTests && !activeTestDate
+        ? "Não há testes futuros para os filtros selecionados. Os testes antigos estão ocultos."
+        : "Não há testes para os filtros selecionados."}</p>`
+      : '<p class="empty-state">Ainda não existem testes registados.</p>';
     return;
   }
 
@@ -144,7 +173,8 @@ function downloadCsv() {
   const link = document.createElement("a");
   const query = document.querySelector("#student-filter").value.trim();
   link.href = url;
-  link.download = `${(query || "historico").replaceAll(" ", "_").toLocaleLowerCase("pt-PT")}.csv`;
+  const filename = [query || "historico", activeTestDate].filter(Boolean).join("_");
+  link.download = `${filename.replaceAll(" ", "_").toLocaleLowerCase("pt-PT")}.csv`;
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -298,8 +328,21 @@ document.querySelector("#filter-form").addEventListener("submit", (event) => {
   renderTests();
 });
 document.querySelector("#student-filter").addEventListener("input", renderTests);
+document.querySelector("#day-filter-button").addEventListener("click", () => {
+  const selectedDate = document.querySelector("#test-day-filter").value;
+  if (!selectedDate) return showNotice("Seleciona um dia para ver os testes.", true);
+  activeTestDate = selectedDate;
+  renderTests();
+});
+document.querySelector("#toggle-past-tests").addEventListener("click", () => {
+  showPastTests = !showPastTests;
+  renderTests();
+});
 document.querySelector("#clear-filter").addEventListener("click", () => {
   document.querySelector("#student-filter").value = "";
+  document.querySelector("#test-day-filter").value = "";
+  activeTestDate = "";
+  showPastTests = false;
   renderTests();
 });
 document.querySelector("#export-button").addEventListener("click", downloadCsv);
@@ -325,6 +368,7 @@ document.querySelector("#user-list").addEventListener("submit", async (event) =>
   if (userId === currentUser.id) {
     currentProfile.role = role;
     showSignedIn();
+    renderTests();
   }
 });
 document.querySelector("#logout-button").addEventListener("click", async () => {
@@ -332,6 +376,20 @@ document.querySelector("#logout-button").addEventListener("click", async () => {
   if (error) showNotice(error.message, true);
   showSignedOut();
 });
+
+function scheduleDailyRender() {
+  const now = new Date();
+  const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  window.setTimeout(() => {
+    renderTests();
+    scheduleDailyRender();
+  }, nextMidnight.getTime() - now.getTime() + 50);
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) renderTests();
+});
+scheduleDailyRender();
 
 if (!configured) {
   document.querySelectorAll("#login-form button, #signup-form button").forEach((button) => { button.disabled = true; });

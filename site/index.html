@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <script src="supabase-config.js"></script>
-  <script type="module" src="app.js"></script>
+  <script type="module" src="app.js?v=2"></script>
 </head>
 <body>
   <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
@@ -87,8 +87,14 @@
             <div class="section-heading"><div><p class="eyebrow">Agenda</p><h2 id="records-title">Testes registados</h2></div><span id="record-count" class="record-count">0</span></div>
             <div class="toolbar">
               <form id="filter-form" class="filter-form"><label class="visually-hidden" for="student-filter">Pesquisar aluno</label><input id="student-filter" name="student" type="search" placeholder="Pesquisar aluno"><button class="button button-dark" type="submit">Filtrar</button></form>
+              <div id="day-filter-controls" class="day-filter-controls" hidden>
+                <label for="test-day-filter">Dia</label>
+                <input id="test-day-filter" type="date">
+                <button id="day-filter-button" class="button button-dark" type="button">Ver testes do dia</button>
+              </div>
               <button id="refresh-button" class="button button-outline" type="button">Atualizar</button>
-              <button id="clear-filter" class="button button-text" type="button" hidden>Limpar</button>
+              <button id="clear-filter" class="button button-text" type="button" hidden>Limpar Filtros</button>
+              <button id="toggle-past-tests" class="button button-text" type="button" hidden aria-pressed="false">Mostrar antigos</button>
               <button id="export-button" class="button button-export" type="button" hidden>Exportar CSV</button>
               <button id="import-button" class="button button-text" type="button" hidden>Importar JSON</button>
               <input id="import-file" type="file" accept="application/json,.json" hidden>

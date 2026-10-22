@@ -85,6 +85,9 @@ input:focus, select:focus { outline: 2px solid rgb(23 108 99 / 24%); border-colo
 .filter-form { display: flex; gap: 6px; flex: 1 1 260px; }
 .filter-form input { min-width: 120px; min-height: 39px; font-size: 12px; }
 .filter-form .button { flex: 0 0 auto; }
+.day-filter-controls { display: flex; align-items: center; gap: 6px; }
+.day-filter-controls label { font-size: 12px; font-weight: 700; }
+.day-filter-controls input { min-height: 39px; padding: 8px; border: 1px solid var(--line); border-radius: 3px; color: var(--ink); background: white; font-size: 12px; }
 .test-list { display: grid; gap: 9px; }
 .test-item { display: grid; grid-template-columns: minmax(120px, 1.1fr) minmax(110px, 1fr) minmax(150px, auto); align-items: center; gap: 12px; padding: 14px 15px; border-left: 3px solid var(--gold); background: #fffefa; box-shadow: 0 2px 9px rgb(24 61 59 / 5%); }
 .student-name { display: block; margin-bottom: 4px; color: var(--ink); font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
@@ -130,6 +133,8 @@ input:focus, select:focus { outline: 2px solid rgb(23 108 99 / 24%); border-colo
   .test-date { text-align: right; }
   .toolbar { align-items: stretch; }
   .filter-form { flex-basis: 100%; }
+  .day-filter-controls { flex: 1 1 100%; }
+  .day-filter-controls input { flex: 1; min-width: 0; }
   .users-panel { padding: 0 12px; }
   .user-table-head, .user-row { grid-template-columns: 1fr auto; gap: 8px; }
   .user-table-head span:nth-child(2), .user-row > .current-role { display: none; }
