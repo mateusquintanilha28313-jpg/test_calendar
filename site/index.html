@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#183d3b">
+  <meta name="theme-color" content="#123F35">
   <title>Calendário de Testes | Teoria dos Números</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,9 +14,20 @@
 </head>
 <body>
   <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+  <div class="snowfall" aria-hidden="true">
+    <span></span><span></span><span></span><span></span><span></span><span></span>
+    <span></span><span></span><span></span><span></span><span></span><span></span>
+  </div>
   <main id="auth-screen" class="auth-screen">
     <section class="auth-panel" aria-labelledby="auth-title">
       <img class="auth-logo" src="static/images/465265618_1118096523653749_7654686943570440081_n.jpg" alt="Teoria dos Números">
+      <div class="holiday-tree" aria-hidden="true">
+        <span class="tree-tier tree-tier-top"></span>
+        <span class="tree-tier tree-tier-middle"></span>
+        <span class="tree-tier tree-tier-bottom"></span>
+        <span class="tree-ornament tree-ornament-left"></span>
+        <span class="tree-ornament tree-ornament-right"></span>
+      </div>
       <p class="eyebrow">Teoria dos Números</p>
       <h1 id="auth-title">Calendário de Testes</h1>
       <div class="auth-tabs" role="tablist" aria-label="Acesso">
@@ -55,10 +66,12 @@
 
   <div id="app-screen" hidden>
     <header class="topbar">
+      <div class="holiday-garland" aria-hidden="true"></div>
       <a class="brand" href="#inicio" aria-label="Teoria dos Números, início">
         <img src="static/images/465265618_1118096523653749_7654686943570440081_n.jpg" alt="">
         <span>Teoria dos Números</span>
       </a>
+      <span class="holiday-greeting" aria-hidden="true">Feliz Natal!</span>
       <div class="topbar-actions">
         <span id="account-label" class="account-label"></span>
         <button id="manage-link" class="button button-quiet" type="button" hidden>Utilizadores</button>
