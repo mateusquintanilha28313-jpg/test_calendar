@@ -389,3 +389,4 @@ input:focus, select:focus { outline: 2px solid rgb(23 108 99 / 24%); border-colo
 .pending-actions { display: flex; gap: 8px; }
 .pending-actions .button { min-height: 34px; padding: 7px 10px; }
 #pending-list .empty-state { margin: 14px 0; }
+.user-row form .button-danger { margin-left: auto; }

@@ -193,6 +193,7 @@ async function loadProfiles() {
           <option value="professor" ${profile.role === "professor" ? "selected" : ""}>Professor</option>
         </select>
         <button class="button button-primary" type="submit">Guardar</button>
+        ${profile.id === currentUser.id ? "" : `<button class="button button-danger" type="button" data-delete-user="${escapeHtml(profile.id)}" data-username="${escapeHtml(profile.username)}">Apagar</button>`}
       </form>
     </div>`).join("") || '<p class="empty-state">Não existem utilizadores.</p>';
 }
@@ -400,6 +401,15 @@ document.querySelector("#back-home").addEventListener("click", () => {
   document.querySelector("#users-view").hidden = true;
   document.querySelector("#home-view").hidden = false;
 });
+document.querySelector("#user-list").addEventListener("click", async (event) => {
+  const button = event.target.closest("[data-delete-user]");
+  if (!button) return;
+  if (!window.confirm(`Apagar a conta de ${button.dataset.username}? Os testes desta conta também são apagados. Esta ação não pode ser desfeita.`)) return;
+  const { error } = await supabase.rpc("delete_user_account", { target_user: button.dataset.deleteUser });
+  if (error) return showNotice(error.message, true);
+  showNotice("Utilizador apagado.");
+  await loadProfiles();
+});
 document.querySelector("#user-list").addEventListener("submit", async (event) => {
   const form = event.target.closest("[data-role-form]");
   if (!form) return;
@@ -426,7 +436,7 @@ document.querySelector("#pending-list").addEventListener("click", async (event) 
     showNotice("Conta aprovada.");
   } else if (rejectButton) {
     if (!window.confirm(`Rejeitar e apagar o pedido de ${rejectButton.dataset.username}?`)) return;
-    const { error } = await supabase.rpc("reject_pending_user", { target_user: rejectButton.dataset.rejectUser });
+    const { error } = await supabase.rpc("delete_user_account", { target_user: rejectButton.dataset.rejectUser });
     if (error) return showNotice(error.message, true);
     showNotice("Pedido rejeitado.");
   } else {

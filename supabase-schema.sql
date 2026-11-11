@@ -95,7 +95,9 @@ begin
 end;
 $$;
 
-create or replace function public.reject_pending_user(target_user uuid)
+drop function if exists public.reject_pending_user(uuid);
+
+create or replace function public.delete_user_account(target_user uuid)
 returns void
 language plpgsql
 security definer
@@ -105,10 +107,11 @@ begin
   if not public.current_user_is_professor() then
     raise exception 'not_allowed' using errcode = '42501';
   end if;
+  if target_user = auth.uid() then
+    raise exception 'cannot_delete_self' using errcode = 'P0001';
+  end if;
 
-  delete from auth.users
-  where id = target_user
-    and exists (select 1 from public.profiles where id = target_user and not approved);
+  delete from auth.users where id = target_user;
 end;
 $$;
 
@@ -164,6 +167,6 @@ revoke all on function public.current_user_is_professor() from public;
 grant execute on function public.current_user_is_professor() to authenticated;
 revoke all on function public.current_user_is_approved() from public;
 grant execute on function public.current_user_is_approved() to authenticated;
-revoke all on function public.reject_pending_user(uuid) from public, anon;
-grant execute on function public.reject_pending_user(uuid) to authenticated;
+revoke all on function public.delete_user_account(uuid) from public, anon;
+grant execute on function public.delete_user_account(uuid) to authenticated;
 revoke all on function public.create_profile_for_new_user() from public, anon, authenticated;
