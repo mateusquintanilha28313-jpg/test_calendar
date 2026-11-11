@@ -58,8 +58,14 @@
           <input id="signup-teacher-code" name="teacher_code" type="password" autocomplete="off">
         </div>
         <button id="signup-submit" class="button button-primary" type="submit">Criar conta de aluno</button>
-        <p id="signup-note" class="form-note">As contas de professor precisam do código fornecido pela escola.</p>
+        <p id="signup-note" class="form-note">As contas de aluno ficam à espera de aprovação de um professor. As contas de professor precisam do código fornecido pela escola.</p>
       </form>
+      <div id="pending-panel" class="pending-panel" hidden>
+        <h2>Conta à espera de aprovação</h2>
+        <p>A sua conta foi criada. Um professor tem de a aprovar antes de poder usar o calendário.</p>
+        <button id="pending-check" class="button button-primary" type="button">Verificar de novo</button>
+        <button id="pending-logout" class="button button-outline" type="button">Sair</button>
+      </div>
       <p id="config-help" class="config-help" hidden>Configure o URL e a chave pública do Supabase em <code>site/supabase-config.js</code>.</p>
     </section>
   </main>
@@ -118,6 +124,10 @@
       </section>
       <section id="users-view" hidden>
         <div class="page-heading"><div><p class="eyebrow">Administração</p><h1>Gestão de utilizadores</h1></div><button id="back-home" class="button button-outline" type="button">Voltar ao calendário</button></div>
+        <section class="users-panel pending-users" aria-labelledby="pending-title">
+          <div class="pending-heading"><h2 id="pending-title">Pedidos de acesso</h2><span id="pending-count" class="record-count">0</span></div>
+          <div id="pending-list"></div>
+        </section>
         <section class="users-panel" aria-label="Utilizadores registados"><div class="user-table-head"><span>Utilizador</span><span>Perfil</span><span>Alterar perfil</span></div><div id="user-list"></div></section>
       </section>
     </main>

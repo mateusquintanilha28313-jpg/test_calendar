@@ -6,7 +6,7 @@ A aplicação em `site/` é JavaScript estático para GitHub Pages e usa Supabas
 
 1. Crie um projeto no Supabase.
 2. No SQL Editor do Supabase, execute [`supabase-schema.sql`](supabase-schema.sql).
-3. Nas definições de autenticação do Supabase, escolha se os utilizadores têm de confirmar o email. Se a confirmação estiver ativa, cada pessoa terá de validar o endereço antes de iniciar sessão.
+3. Em **Authentication > Sign In / Providers > Email** do Supabase, desligue **Confirm email**. As contas de aluno não são confirmadas por email: ficam pendentes até um professor as aprovar em **Utilizadores > Pedidos de acesso**.
 4. Copie o URL do projeto e a chave publicável/anon para [`site/supabase-config.js`](site/supabase-config.js). A chave anon pode estar no navegador; nunca coloque neste ficheiro uma chave `service_role`. As políticas RLS do SQL protegem os dados.
 5. Envie o repositório para o GitHub. Em **Settings > Pages**, selecione **GitHub Actions** como origem de publicação. O workflow publica `site/`, incluindo o `CNAME` para `teoriadosnumeros.eu.org`.
 6. Depois de obter o endereço Pages, adicione-o à lista de URLs de redirecionamento permitidos em **Authentication > URL Configuration** do Supabase.

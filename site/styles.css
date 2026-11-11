@@ -377,3 +377,15 @@ input:focus, select:focus { outline: 2px solid rgb(23 108 99 / 24%); border-colo
   }
   .snowfall { display: none; }
 }
+.pending-panel { display: grid; gap: 10px; margin-top: 22px; }
+.pending-panel h2 { margin: 0; font-size: 19px; }
+.pending-panel p { margin: 0 0 6px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.pending-users { margin-bottom: 18px; }
+.pending-heading { min-height: 56px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
+.pending-heading h2 { margin: 0; font-size: 17px; }
+.pending-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; min-height: 60px; padding: 8px 0; border-bottom: 1px solid #e9ece6; font-size: 13px; }
+.pending-row:last-child { border-bottom: 0; }
+.pending-row .pending-date { display: block; color: var(--muted); font-size: 11px; }
+.pending-actions { display: flex; gap: 8px; }
+.pending-actions .button { min-height: 34px; padding: 7px 10px; }
+#pending-list .empty-state { margin: 14px 0; }

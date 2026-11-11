@@ -5,6 +5,9 @@ create table if not exists public.profiles (
   created_at timestamptz not null default now()
 );
 
+alter table public.profiles add column if not exists approved boolean not null default true;
+alter table public.profiles alter column approved set default false;
+
 create unique index if not exists profiles_username_lower_unique
   on public.profiles (lower(username));
 
@@ -29,6 +32,19 @@ as $$
   select exists (
     select 1 from public.profiles
     where id = auth.uid() and role = 'professor'
+  );
+$$;
+
+create or replace function public.current_user_is_approved()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1 from public.profiles
+    where id = auth.uid() and (approved or role = 'professor')
   );
 $$;
 
@@ -63,11 +79,12 @@ begin
     new_role := 'professor';
   end if;
 
-  insert into public.profiles (id, username, role)
+  insert into public.profiles (id, username, role, approved)
   values (
     new.id,
     coalesce(nullif(trim(new.raw_user_meta_data ->> 'username'), ''), split_part(new.email, '@', 1)),
-    new_role
+    new_role,
+    new_role = 'professor'
   );
 
   update auth.users
@@ -75,6 +92,23 @@ begin
   where id = new.id;
 
   return new;
+end;
+$$;
+
+create or replace function public.reject_pending_user(target_user uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not public.current_user_is_professor() then
+    raise exception 'not_allowed' using errcode = '42501';
+  end if;
+
+  delete from auth.users
+  where id = target_user
+    and exists (select 1 from public.profiles where id = target_user and not approved);
 end;
 $$;
 
@@ -100,18 +134,18 @@ create policy "Professor manages roles"
 drop policy if exists "Users read own tests and professors read all" on public.tests;
 create policy "Users read own tests and professors read all"
   on public.tests for select to authenticated
-  using (user_id = (select auth.uid()) or (select public.current_user_is_professor()));
+  using ((user_id = (select auth.uid()) and (select public.current_user_is_approved())) or (select public.current_user_is_professor()));
 
 drop policy if exists "Users create own tests" on public.tests;
 create policy "Users create own tests"
   on public.tests for insert to authenticated
-  with check (user_id = (select auth.uid()) or (select public.current_user_is_professor()));
+  with check ((user_id = (select auth.uid()) and (select public.current_user_is_approved())) or (select public.current_user_is_professor()));
 
 drop policy if exists "Users and professors update permitted tests" on public.tests;
 create policy "Users and professors update permitted tests"
   on public.tests for update to authenticated
-  using (user_id = (select auth.uid()) or (select public.current_user_is_professor()))
-  with check (user_id = (select auth.uid()) or (select public.current_user_is_professor()));
+  using ((user_id = (select auth.uid()) and (select public.current_user_is_approved())) or (select public.current_user_is_professor()))
+  with check ((user_id = (select auth.uid()) and (select public.current_user_is_approved())) or (select public.current_user_is_professor()));
 
 drop policy if exists "Professors delete tests" on public.tests;
 create policy "Professors delete tests"
@@ -120,7 +154,7 @@ create policy "Professors delete tests"
 
 revoke all on public.profiles from anon, authenticated;
 grant select on public.profiles to authenticated;
-grant update (role) on public.profiles to authenticated;
+grant update (role, approved) on public.profiles to authenticated;
 
 revoke all on public.tests from anon, authenticated;
 grant select, insert, delete on public.tests to authenticated;
@@ -128,4 +162,8 @@ grant update (grade) on public.tests to authenticated;
 
 revoke all on function public.current_user_is_professor() from public;
 grant execute on function public.current_user_is_professor() to authenticated;
+revoke all on function public.current_user_is_approved() from public;
+grant execute on function public.current_user_is_approved() to authenticated;
+revoke all on function public.reject_pending_user(uuid) from public, anon;
+grant execute on function public.reject_pending_user(uuid) to authenticated;
 revoke all on function public.create_profile_for_new_user() from public, anon, authenticated;

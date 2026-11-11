@@ -14,6 +14,7 @@ let currentProfile = null;
 let tests = [];
 let activeTestDate = "";
 let showPastTests = false;
+let authMode = "login";
 let noticeTimeout;
 
 function showNotice(message, isError = false) {
@@ -31,6 +32,7 @@ function escapeHtml(value) {
 }
 
 function setAuthMode(mode) {
+  authMode = mode;
   const isLogin = mode === "login";
   loginForm.hidden = !isLogin;
   signupForm.hidden = isLogin;
@@ -41,12 +43,30 @@ function setAuthMode(mode) {
   });
 }
 
+function setPendingMode(isPending) {
+  document.querySelector("#pending-panel").hidden = !isPending;
+  document.querySelector(".auth-tabs").hidden = isPending;
+  if (isPending) {
+    loginForm.hidden = true;
+    signupForm.hidden = true;
+  } else {
+    setAuthMode(authMode);
+  }
+}
+
 function showSignedOut() {
   currentUser = null;
   currentProfile = null;
   authScreen.hidden = false;
   appScreen.hidden = true;
+  setPendingMode(false);
   document.querySelector("#config-help").hidden = configured;
+}
+
+function showPending() {
+  authScreen.hidden = false;
+  appScreen.hidden = true;
+  setPendingMode(true);
 }
 
 function showSignedIn() {
@@ -56,6 +76,7 @@ function showSignedIn() {
   document.querySelector("#account-label").textContent = currentProfile.username;
   document.querySelector("#role-label").textContent = isProfessor ? "Perfil de professor" : "Perfil de aluno";
   document.querySelector("#manage-link").hidden = !isProfessor;
+  if (isProfessor) void updatePendingCount();
   document.querySelector("#import-button").hidden = true;
   document.querySelector("#day-filter-controls").hidden = !isProfessor;
   if (!isProfessor) {
@@ -67,9 +88,10 @@ function showSignedIn() {
 }
 
 async function loadProfile() {
-  const { data, error } = await supabase.from("profiles").select("id, username, role").eq("id", currentUser.id).single();
+  const { data, error } = await supabase.from("profiles").select("id, username, role, approved").eq("id", currentUser.id).single();
   if (error) throw error;
   currentProfile = data;
+  if (data.role !== "professor" && !data.approved) return showPending();
   showSignedIn();
   await loadTests();
 }
@@ -135,13 +157,32 @@ function renderTests() {
   }).join("");
 }
 
+async function updatePendingCount() {
+  const { count, error } = await supabase.from("profiles").select("id", { count: "exact", head: true }).eq("approved", false).neq("role", "professor");
+  if (error) return;
+  document.querySelector("#manage-link").textContent = count ? `Utilizadores (${count} pendente${count === 1 ? "" : "s"})` : "Utilizadores";
+}
+
 async function loadProfiles() {
-  const { data, error } = await supabase.from("profiles").select("id, username, role").order("username");
+  const { data, error } = await supabase.from("profiles").select("id, username, role, approved, created_at").order("username");
   if (error) {
     showNotice(error.message, true);
     return;
   }
-  document.querySelector("#user-list").innerHTML = (data || []).map((profile) => `
+  const isPending = (profile) => profile.role !== "professor" && !profile.approved;
+  const pending = (data || []).filter(isPending).sort((a, b) => a.created_at.localeCompare(b.created_at));
+  const approved = (data || []).filter((profile) => !isPending(profile));
+  document.querySelector("#pending-count").textContent = String(pending.length);
+  document.querySelector("#pending-list").innerHTML = pending.map((profile) => `
+    <div class="pending-row">
+      <span><strong>${escapeHtml(profile.username)}</strong><span class="pending-date">Pedido em ${new Date(profile.created_at).toLocaleDateString("pt-PT")}</span></span>
+      <span class="pending-actions">
+        <button class="button button-primary" type="button" data-approve-user="${escapeHtml(profile.id)}">Aprovar</button>
+        <button class="button button-danger" type="button" data-reject-user="${escapeHtml(profile.id)}" data-username="${escapeHtml(profile.username)}">Rejeitar</button>
+      </span>
+    </div>`).join("") || '<p class="empty-state">Não há pedidos à espera de aprovação.</p>';
+  void updatePendingCount();
+  document.querySelector("#user-list").innerHTML = approved.map((profile) => `
     <div class="user-row">
       <span>${escapeHtml(profile.username)}</span>
       <span class="current-role">${profile.role === "professor" ? "Professor" : "Aluno"}</span>
@@ -261,6 +302,10 @@ signupForm.addEventListener("submit", async (event) => {
     signupForm.reset();
     updateSignupType();
     showNotice("Conta criada. Confirme o email antes de iniciar sessão.");
+  } else if (!isProfessor) {
+    signupForm.reset();
+    updateSignupType();
+    showNotice("Conta criada. Um professor tem de aprovar a conta antes de a poder usar.");
   }
 });
 
@@ -370,6 +415,38 @@ document.querySelector("#user-list").addEventListener("submit", async (event) =>
     showSignedIn();
     renderTests();
   }
+});
+document.querySelector("#pending-list").addEventListener("click", async (event) => {
+  const approveButton = event.target.closest("[data-approve-user]");
+  const rejectButton = event.target.closest("[data-reject-user]");
+  if (approveButton) {
+    const { data, error } = await supabase.from("profiles").update({ approved: true }).eq("id", approveButton.dataset.approveUser).select("id");
+    if (error) return showNotice(error.message, true);
+    if (!data.length) return showNotice("Não foi possível aprovar esta conta.", true);
+    showNotice("Conta aprovada.");
+  } else if (rejectButton) {
+    if (!window.confirm(`Rejeitar e apagar o pedido de ${rejectButton.dataset.username}?`)) return;
+    const { error } = await supabase.rpc("reject_pending_user", { target_user: rejectButton.dataset.rejectUser });
+    if (error) return showNotice(error.message, true);
+    showNotice("Pedido rejeitado.");
+  } else {
+    return;
+  }
+  await loadProfiles();
+});
+document.querySelector("#pending-check").addEventListener("click", async () => {
+  if (!currentUser) return;
+  try {
+    await loadProfile();
+    if (!currentProfile.approved && currentProfile.role !== "professor") showNotice("A conta ainda não foi aprovada.");
+  } catch (error) {
+    showNotice(error.message, true);
+  }
+});
+document.querySelector("#pending-logout").addEventListener("click", async () => {
+  const { error } = await supabase.auth.signOut();
+  if (error) showNotice(error.message, true);
+  showSignedOut();
 });
 document.querySelector("#logout-button").addEventListener("click", async () => {
   const { error } = await supabase.auth.signOut();
